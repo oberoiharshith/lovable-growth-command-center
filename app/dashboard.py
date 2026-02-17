@@ -1,3 +1,4 @@
+import sys
 import subprocess
 from pathlib import Path
 
@@ -19,11 +20,12 @@ def build_outputs() -> str:
     """
     Streamlit Cloud starts from a clean container.
     If outputs are missing, run analysis once to generate out/exports.
-    If it fails, return stdout/stderr so it shows on the page.
+    Uses sys.executable to guarantee we use the same Python env Streamlit is running.
+    Returns stdout/stderr so failures show on the page.
     """
     try:
         res = subprocess.run(
-            ["python", "-m", "src.analysis", "--data_dir", "data/raw", "--out_dir", "out"],
+            [sys.executable, "-m", "src.analysis", "--data_dir", "data/raw", "--out_dir", "out"],
             check=True,
             capture_output=True,
             text=True,
@@ -39,7 +41,7 @@ if not FEATURES_PATH.exists():
         build_log = build_outputs()
 
     if not FEATURES_PATH.exists():
-        st.error("Build failed while running: python -m src.analysis --data_dir data/raw --out_dir out")
+        st.error(f"Build failed while running: {sys.executable} -m src.analysis --data_dir data/raw --out_dir out")
         st.code(build_log)
         st.stop()
 
