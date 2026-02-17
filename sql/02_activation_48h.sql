@@ -1,0 +1,2 @@
+-- Illustrative activation definition
+-- activated_48h = ship within 48h of signup
