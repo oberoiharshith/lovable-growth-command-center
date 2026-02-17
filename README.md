@@ -1,4 +1,3 @@
-````md
 # Lovable Growth Command Center (POC)
 
 A product-data POC aligned to Lovable’s Data Scientist role.
