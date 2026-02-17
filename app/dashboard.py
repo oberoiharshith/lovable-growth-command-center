@@ -5,7 +5,6 @@ import pandas as pd
 import plotly.express as px
 import streamlit as st
 
-
 st.set_page_config(page_title="Lovable Growth Command Center (POC)", layout="wide")
 st.title("Lovable Growth Command Center (POC)")
 
@@ -16,35 +15,55 @@ FUNNEL_PATH = OUT_DIR / "exports" / "funnel.csv"
 
 
 @st.cache_resource
-def build_outputs():
+def build_outputs() -> str:
     """
     Streamlit Cloud starts from a clean container.
-    If out/exports is missing, run the analysis pipeline once to generate it.
+    If outputs are missing, run analysis once to generate out/exports.
+    If it fails, return stdout/stderr so it shows on the page.
     """
-    subprocess.run(
-        ["python", "-m", "src.analysis", "--data_dir", "data/raw", "--out_dir", "out"],
-        check=True,
-    )
+    try:
+        res = subprocess.run(
+            ["python", "-m", "src.analysis", "--data_dir", "data/raw", "--out_dir", "out"],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        return f"STDOUT:\n{res.stdout}\n\nSTDERR:\n{res.stderr}"
+    except subprocess.CalledProcessError as e:
+        return f"STDOUT:\n{e.stdout}\n\nSTDERR:\n{e.stderr}"
 
 
 # Build step (runs once per container if outputs missing)
 if not FEATURES_PATH.exists():
     with st.spinner("Preparing data (running analysis)…"):
-        build_outputs()
+        build_log = build_outputs()
 
-# If it still doesn't exist, fail clearly
-if not FEATURES_PATH.exists():
-    st.error("Build failed: out/exports/features.csv was not created.")
-    st.stop()
+    if not FEATURES_PATH.exists():
+        st.error("Build failed while running: python -m src.analysis --data_dir data/raw --out_dir out")
+        st.code(build_log)
+        st.stop()
 
+# Load features
 feats = pd.read_csv(FEATURES_PATH)
 
 with st.sidebar:
     st.header("Filters")
-    acq = st.multiselect("acquisition_channel", sorted(feats["acquisition_channel"].dropna().unique().tolist()))
-    intent = st.multiselect("signup_intent", sorted(feats["signup_intent"].dropna().unique().tolist()))
-    platform = st.multiselect("platform", sorted(feats["platform"].dropna().unique().tolist()))
-    country = st.multiselect("country", sorted(feats["country"].dropna().unique().tolist()))
+    acq = st.multiselect(
+        "acquisition_channel",
+        sorted(feats["acquisition_channel"].dropna().unique().tolist()),
+    )
+    intent = st.multiselect(
+        "signup_intent",
+        sorted(feats["signup_intent"].dropna().unique().tolist()),
+    )
+    platform = st.multiselect(
+        "platform",
+        sorted(feats["platform"].dropna().unique().tolist()),
+    )
+    country = st.multiselect(
+        "country",
+        sorted(feats["country"].dropna().unique().tolist()),
+    )
 
 f = feats.copy()
 if acq:
@@ -85,7 +104,7 @@ if FUNNEL_PATH.exists():
     funnel = pd.read_csv(FUNNEL_PATH)
     st.plotly_chart(px.funnel(funnel, x="users", y="step"), use_container_width=True)
 else:
-    st.info("Funnel output missing. Re-run analysis: python -m src.analysis --data_dir data/raw --out_dir out")
+    st.info("Funnel output missing. Re-run analysis locally: python -m src.analysis --data_dir data/raw --out_dir out")
 
 # Slice analysis
 st.subheader("Activation by key slices")
@@ -107,7 +126,7 @@ if COHORTS_PATH.exists():
     cohorts = pd.read_csv(COHORTS_PATH)
     st.dataframe(cohorts, use_container_width=True)
 else:
-    st.info("Cohorts output missing. Re-run analysis: python -m src.analysis --data_dir data/raw --out_dir out")
+    st.info("Cohorts output missing. Re-run analysis locally: python -m src.analysis --data_dir data/raw --out_dir out")
 
 # Recommendations
 st.subheader("What I would ship next")
