@@ -50,5 +50,3 @@ This POC demonstrates how to:
 * enable self-serve, decision-grade analytics for a fast-moving team
 
 ```
-::contentReference[oaicite:0]{index=0}
-```
